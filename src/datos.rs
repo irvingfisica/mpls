@@ -116,7 +116,7 @@ pub fn add_datos(sucursales: &mut HashMap<usize,Sucursal>, path: &str) -> Result
 
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Sucursal {
     #[serde(rename(deserialize = "Sucursal"))]
     pub id: usize,
@@ -188,13 +188,13 @@ impl Sucursal {
 }
 
 
-#[derive(Debug,Serialize,Deserialize)]
+#[derive(Debug,Serialize,Deserialize,Clone)]
 pub enum Tipo {
     Sucursal,
     Desconocido,
 }
 
-#[derive(Debug,Serialize,Deserialize)]
+#[derive(Debug,Serialize,Deserialize,Clone)]
 pub enum Estatus {
     Abierta,
     Cerrada,
