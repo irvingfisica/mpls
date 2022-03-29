@@ -118,39 +118,39 @@ pub fn add_datos(sucursales: &mut HashMap<usize,Sucursal>, path: &str) -> Result
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Sucursal {
-    #[serde(rename(deserialize = "Sucursal"))]
+    #[serde(alias = "Sucursal")]
     pub id: usize,
-    #[serde(rename(deserialize = "Nombre"))]
+    #[serde(alias = "Nombre")]
     nombre: Option<String>,
-    #[serde(rename(deserialize = "Calle"))]
+    #[serde(alias = "Calle")]
     direccion: Option<String>,
-    #[serde(rename(deserialize = "CP"))]
+    #[serde(alias = "CP")]
     cp: Option<String>,
-    #[serde(rename(deserialize = "Colonia"))]
+    #[serde(alias = "Colonia")]
     colonia: Option<String>,
-    #[serde(rename(deserialize = "Delegación / Municipio"))]
+    #[serde(alias = "Delegación / Municipio")]
     municipio: Option<String>,
-    #[serde(rename(deserialize = "Estado"))]
+    #[serde(alias = "Estado")]
     estado: Option<String>,
-    #[serde(rename(deserialize = "Horario L-V"))]
+    #[serde(alias = "Horario L-V")]
     horario_lv: Option<String>,
-    #[serde(rename(deserialize = "Horario S"))]
+    #[serde(alias = "Horario S")]
     horario_s: Option<String>,
-    #[serde(rename(deserialize = "Horario D"))]
+    #[serde(alias = "Horario D")]
     horario_d: Option<String>,
-    #[serde(rename(deserialize = "Tipo"))]
+    #[serde(alias = "Tipo")]
     #[serde(deserialize_with = "de_tipo")]
     tipo: Tipo,
-    #[serde(rename(deserialize = "Ramos"))]
+    #[serde(alias = "Ramos")]
     ramos: Option<String>,
-    #[serde(rename(deserialize = "Estatus"))]
+    #[serde(alias = "Estatus")]
     #[serde(deserialize_with = "de_estatus")]
     estatus: Estatus,
-    #[serde(rename(deserialize = "X"))]
+    #[serde(alias = "X")]
     lon: Option<f64>,
-    #[serde(rename(deserialize = "Y"))]
+    #[serde(alias = "Y")]
     lat: Option<f64>,
-    #[serde(rename(deserialize = "Fecha Apertura"))]
+    #[serde(alias = "Fecha Apertura")]
     #[serde(deserialize_with = "de_opt_date")]
     fecha_apertura: Option<NaiveDate>,
     datos: Option<BTreeMap<NaiveDate,Datos>>
@@ -203,30 +203,30 @@ pub enum Estatus {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Datos {
-    #[serde(rename(deserialize = "ID Sucursal"))]
+    #[serde(alias = "ID Sucursal")]
     #[serde(deserialize_with = "de_sucursal")]
     id: usize,
-    #[serde(rename(deserialize = "Cartera"))]
+    #[serde(alias = "Cartera")]
     cartera: Option<f64>,
-    #[serde(rename(deserialize = "Ingresos"))]
+    #[serde(alias = "Ingresos")]
     ingresos: Option<f64>,
-    #[serde(rename(deserialize = "Ingreso Venta"))]
+    #[serde(alias = "Ingreso Venta")]
     ingresos_tie: Option<f64>,
-    #[serde(rename(deserialize = "Gastos Empeño"))]
+    #[serde(alias = "Gastos Empeño")]
     gastos_emp: Option<f64>,
-    #[serde(rename(deserialize = "Gastos Tiendas"))]
+    #[serde(alias = "Gastos Tiendas")]
     gastos_tie: Option<f64>,
-    #[serde(rename(deserialize = "Gasto Total"))]
+    #[serde(alias = "Gasto Total")]
     gasto_total: Option<f64>,
-    #[serde(rename(deserialize = "Margen Empeño"))]
+    #[serde(alias = "Margen Empeño")]
     pub margen_emp: Option<f64>,
-    #[serde(rename(deserialize = "Margen Venta"))]
+    #[serde(alias = "Margen Venta")]
     pub margen_tie: Option<f64>,
-    #[serde(rename(deserialize = "Margen Final"))]
+    #[serde(alias = "Margen Final")]
     pub margen_final: Option<f64>,
-    #[serde(rename(deserialize = "Año"))]
+    #[serde(alias = "Año")]
     year: Option<String>,
-    #[serde(rename(deserialize = "Mes"))]
+    #[serde(alias = "Mes")]
     #[serde(deserialize_with = "de_mes")]
     month: Option<String>,
     fecha: Option<NaiveDate>,
