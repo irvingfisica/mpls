@@ -30,18 +30,23 @@ fn main() {
 
     for tipo in tipos {
 
-        let tipcad = match tipo {
-            TipoMargen::Empeño => "emp",
-            TipoMargen::Tienda => "tie",
-            TipoMargen::Total => "tot",
+        let (tipcad,tipy) = match tipo {
+            TipoMargen::Empeño => ("emp"," empeño"),
+            TipoMargen::Tienda => ("tie"," tienda"),
+            TipoMargen::Total => ("tot"," total"),
         };
 
         let mut wtr = Writer::from_path(format!("./pruebas/pl_{}.csv",tipcad)).unwrap();
 
         let mut margenes = Vec::new();
 
+        let mut titulo = None;
+
         let sucpixl = match sucursales.get(&numsuc) {
-            Some(suc) => suc.vec_of_empty_pixls(&tipo),
+            Some(suc) => {
+                titulo = suc.nombre.as_ref();
+                suc.vec_of_empty_pixls(&tipo)
+            },
             None => None
         };
 
@@ -51,9 +56,12 @@ fn main() {
 
         consolidate_pixls(&mut margenes, 120).unwrap();
 
-        let plot = pixl_plot(&margenes, sucpixl).unwrap();
-
-        svg::save(format!("./pruebas/pl_{}.svg",tipcad),&plot).unwrap();
+        match pixl_plot(&margenes, sucpixl, titulo, tipy) {
+            Ok(plot) => {
+                svg::save(format!("./pruebas/pl_{}.svg",tipcad),&plot).unwrap();
+            },
+            _ => {}
+        };
 
         for margen in margenes.iter() {
             wtr.serialize(margen).unwrap()

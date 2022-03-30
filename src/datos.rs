@@ -17,9 +17,11 @@ use escalas::LinearScale;
 use axis::Direccion;
 use axis::Axis;
 use transforms::get_translation;
+use transforms::get_rotation;
 use paths::simple_line;
 use paths::simple_polygon;
 use escalas::ContinuousScale;
+use transforms::to_pxs;
 
 pub fn get_sucursales(path: &str) -> Result<HashMap<usize,Sucursal>,Box<dyn Error>> {
     
@@ -121,39 +123,39 @@ pub struct Sucursal {
     #[serde(alias = "Sucursal")]
     pub id: usize,
     #[serde(alias = "Nombre")]
-    nombre: Option<String>,
+    pub nombre: Option<String>,
     #[serde(alias = "Calle")]
-    direccion: Option<String>,
+    pub direccion: Option<String>,
     #[serde(alias = "CP")]
-    cp: Option<String>,
+    pub cp: Option<String>,
     #[serde(alias = "Colonia")]
-    colonia: Option<String>,
+    pub colonia: Option<String>,
     #[serde(alias = "Delegación / Municipio")]
-    municipio: Option<String>,
+    pub municipio: Option<String>,
     #[serde(alias = "Estado")]
-    estado: Option<String>,
+    pub estado: Option<String>,
     #[serde(alias = "Horario L-V")]
-    horario_lv: Option<String>,
+    pub horario_lv: Option<String>,
     #[serde(alias = "Horario S")]
-    horario_s: Option<String>,
+    pub horario_s: Option<String>,
     #[serde(alias = "Horario D")]
-    horario_d: Option<String>,
+    pub horario_d: Option<String>,
     #[serde(alias = "Tipo")]
     #[serde(deserialize_with = "de_tipo")]
-    tipo: Tipo,
+    pub tipo: Tipo,
     #[serde(alias = "Ramos")]
-    ramos: Option<String>,
+    pub ramos: Option<String>,
     #[serde(alias = "Estatus")]
     #[serde(deserialize_with = "de_estatus")]
-    estatus: Estatus,
+    pub estatus: Estatus,
     #[serde(alias = "X")]
-    lon: Option<f64>,
+    pub lon: Option<f64>,
     #[serde(alias = "Y")]
-    lat: Option<f64>,
+    pub lat: Option<f64>,
     #[serde(alias = "Fecha Apertura")]
     #[serde(deserialize_with = "de_opt_date")]
-    fecha_apertura: Option<NaiveDate>,
-    datos: Option<BTreeMap<NaiveDate,Datos>>
+    pub fecha_apertura: Option<NaiveDate>,
+    pub datos: Option<BTreeMap<NaiveDate,Datos>>
 }
 
 impl Sucursal {
@@ -161,7 +163,8 @@ impl Sucursal {
     pub fn pixls_to_vec(&self, tipo: &TipoMargen, cadena: &mut Vec<Pixl>) {
         match &self.datos {
             Some(data) => {
-                data.values().for_each(|ele| {
+                data.values()
+                .for_each(|ele| {
                     match ele.to_pixl(tipo) {
                         Some(pixl) => cadena.push(pixl),
                         None => {}
@@ -394,9 +397,10 @@ where
     g = g.add(bandas);
 
     let promedios = stats.iter().map(|ele| (ele.0,ele.2)).collect();
-    let pathm = simple_line(None, &promedios, scx, scy).unwrap();
 
-    let lineam = Path::new()
+    match simple_line(None, &promedios, scx, scy) {
+        Some(pathm) => {
+            let lineam = Path::new()
                 .set("fill","none")
                 .set("stroke-width",0.5)
                 .set("stroke","black")
@@ -404,14 +408,23 @@ where
                 .set("clip-path","url(#marco)")
                 .set("d",pathm);
 
-    g = g.add(lineam);
+            g = g.add(lineam);
+        },
+        None => {}
+    }
 
     let mut mg = Group::new();
 
     for (x,y,_,_) in stats.iter() {
+
+        let (x,y) = match (scx.scale(*x),scy.scale(*y)) {
+            (Some(xv),Some(yv)) => (xv,yv),
+            _ => continue
+        };
+
         let circle = Circle::new()
-                    .set("cx", scx.scale(*x).unwrap())
-                    .set("cy", scy.scale(*y).unwrap())
+                    .set("cx", x)
+                    .set("cy", y)
                     .set("r", 2)
                     .set("stroke-width",0.5)
                     .set("fill","gray")
@@ -497,16 +510,20 @@ where
 
     for i in 0..10 {
         let pdata = urovoro(&ida, (i as f64 - 5.0) * 0.5, (i as f64 - 4.0) * 0.5);
-        let ppath = simple_polygon(None, &pdata, scx, scy).ok_or("Error al construir el polígono")?;
 
-        let pdraw = Path::new()
+        match simple_polygon(None, &pdata, scx, scy) {
+            Some(ppath) => {
+                let pdraw = Path::new()
                 .set("fill",colband[i])
                 .set("opacity",0.5)
                 .set("stroke","none")
                 .set("clip-path","url(#marco)")
                 .set("d",ppath);
 
-        g = g.add(pdraw);
+                g = g.add(pdraw);
+            },
+            None => continue
+        };
     };
 
     Ok(g)
@@ -542,6 +559,13 @@ impl Pixl {
     pub fn get_coord(&self) -> Option<(f64,f64)> {
         match self.margen {
             Some(margen) => Some((self.meses,margen)),
+            None => None
+        }
+    }
+
+    pub fn get_coord_date(&self) -> Option<(f64,f64,NaiveDate)> {
+        match self.margen {
+            Some(margen) => Some((self.meses,margen,self.fecha)),
             None => None
         }
     }
@@ -584,7 +608,19 @@ pub fn pixls_to_coords(margenes: &Vec<Pixl>) -> Vec<(f64,f64)> {
         };
     };
     salida
+}
 
+pub fn pixls_to_coords_date(margenes: &Vec<Pixl>) -> Vec<(f64,f64,NaiveDate)> {
+
+    let mut salida = Vec::new();
+
+    for margen in margenes.iter() {
+        match margen.get_coord_date() {
+            Some(tup) => salida.push(tup),
+            None => {}
+        };
+    };
+    salida
 }
 
 pub fn plot_line<S,T>(coords: &Vec<(f64,f64)>, scx: &S, scy: &T) -> Result<Group, Box<dyn Error>> 
@@ -597,21 +633,30 @@ pub fn plot_line<S,T>(coords: &Vec<(f64,f64)>, scx: &S, scy: &T) -> Result<Group
 
         let coords: Vec<(f64,f64)> = coords.iter().map(|(vd,vm)| (*vd,*vm)).collect();
 
-        let path = simple_line(None, &coords, scx, scy).unwrap();
-
-        let linea = Path::new()
+        match simple_line(None, &coords, scx, scy) {
+            Some(path) => {
+                let linea = Path::new()
                 .set("fill","none")
                 .set("stroke-width",2)
                 .set("stroke","black")
                 .set("clip-path","url(#marco)")
                 .set("d",path);
 
-        g = g.add(linea);
+                g = g.add(linea);
+            },
+            None => {}
+        }
 
         for (x,y) in coords.iter() {
+
+            let (x,y) = match (scx.scale(*x),scy.scale(*y)) {
+                (Some(xv),Some(yv)) => (xv,yv),
+                _ => continue
+            };
+
             let circle = Circle::new()
-                        .set("cx", scx.scale(*x).unwrap())
-                        .set("cy", scy.scale(*y).unwrap())
+                        .set("cx", x)
+                        .set("cy", y)
                         .set("r", 3.5)
                         .set("stroke-width",2)
                         .set("fill","white")
@@ -625,12 +670,69 @@ pub fn plot_line<S,T>(coords: &Vec<(f64,f64)>, scx: &S, scy: &T) -> Result<Group
 
 }
 
-pub fn pixl_plot(pixels: &Vec<Pixl>, sucpixl: Option<Vec<Pixl>>) -> Result<Document, Box<dyn Error>> {
+pub fn plot_labels<S,T>(coords: &Vec<(f64,f64,NaiveDate)>, scx: &S, scy: &T) -> Result<Group, Box<dyn Error>> 
+    where 
+        S: ContinuousScale,
+        T: ContinuousScale,
+    {
+
+        let mut g = Group::new();
+
+        let coords: Vec<(f64,f64,NaiveDate)> = coords.iter().map(|(vd,vm,fecha)| (*vd,*vm,*fecha)).collect();
+
+        for (x,y,fecha) in coords.iter() {
+
+            let ymin = scy.extent().0;
+            let fechacad = fecha.format("%m - %Y").to_string();
+
+            let (x,y,ymin) = match (scx.scale(*x),scy.scale(*y),scy.scale(ymin)) {
+                (Some(xv),Some(yv),Some(ymv)) => (xv,yv,ymv),
+                _ => continue
+            };
+
+            let line = Line::new()
+                        .set("x1", x)
+                        .set("x2",x)
+                        .set("y1",y)
+                        .set("y2",ymin)
+                        .set("stroke-width",0.3)
+                        .set("stroke","black")
+                        .set("stroke-dasharray","2")
+                        .set("clip-path","url(#marco)");
+
+            g = g.add(line);
+
+            let rotation = get_rotation(-90.0);
+            let translat = get_translation(x,ymin);
+            let transf = format!("{} {}",translat,rotation);
+
+            let mut gtext = Group::new()
+                                    .set("transform",transf);
+
+            let text = Text::new()
+                        .set("x",0.0)
+                        .set("y",0.0)
+                        .set("dy",to_pxs(-3.0))
+                        .set("dx",to_pxs(5.0))
+                        .set("fill","gray")
+                        .set("font-size",to_pxs(10.0))
+                        .add(svg::node::Text::new(fechacad));
+
+            gtext = gtext.add(text);
+            g = g.add(gtext);
+
+        };
+
+        Ok(g)
+
+}
+
+pub fn pixl_plot(pixels: &Vec<Pixl>, sucpixl: Option<Vec<Pixl>>, titulo: Option<&String>,tipy: &str) -> Result<Document, Box<dyn Error>> {
 
     let all_stats = pixls_to_stats(pixels);
 
     let mut plot = Plot::new();
-    plot.set_margin((20.0,20.0,20.0,100.0));
+    plot.set_margin((40.0,20.0,40.0,100.0));
     plot.set_height(750.0);
     plot.set_width(1000.0);
     let mut mg = plot.get_tgroup();
@@ -651,31 +753,84 @@ pub fn pixl_plot(pixels: &Vec<Pixl>, sucpixl: Option<Vec<Pixl>>) -> Result<Docum
     clip = clip.add(fondo);
     mg = mg.add(clip);
 
+    match titulo {
+        Some(tit) => {
+            let titlab = Text::new()
+                    .set("x",plot.ef_w())
+                    .set("y",0.0)
+                    .set("text-anchor","end")
+                    .set("font-size",to_pxs(18.0))
+                    .add(svg::node::Text::new(tit));
+
+            mg = mg.add(titlab);
+
+        },
+        _ => {}
+    };
+
+    let xlab = Text::new()
+                    .set("x",plot.ef_w()*0.5)
+                    .set("y",plot.height*0.945)
+                    .set("text-anchor","middle")
+                    .set("font-size",to_pxs(16.0))
+                    .add(svg::node::Text::new("Meses desde apertura"));
+
+    mg = mg.add(xlab);
+
+    let rotation = get_rotation(-90.0);
+    let translat = get_translation(0.0 - plot.width*0.07,plot.ef_h()*0.5);
+    let transf = format!("{} {}",translat,rotation);
+
+    let mut gtext = Group::new()
+                            .set("transform",transf);
+
+    let ylab = Text::new()
+                    .set("x",0.0)
+                    .set("y",0.0)
+                    .set("text-anchor","middle")
+                    .set("font-size",to_pxs(16.0))
+                    .add(svg::node::Text::new(format!("Margen{}",tipy)));
+
+    gtext = gtext.add(ylab);
+    mg = mg.add(gtext);
+
     let mut scx = LinearScale::new();
         scx.range(0.0,plot.ef_w());
 
     let mut scy = LinearScale::new();
         scy.range(plot.ef_h(),0.0);
 
-    let stats_suc = match sucpixl {
+    let stats_suc_date = match sucpixl {
         Some(pixlvec) => {
-                    let suc_stats = pixls_to_coords(&pixlvec);
+                    let suc_stats = pixls_to_coords_date(&pixlvec);
                     Some(suc_stats)
                 },
                 None => None
     };
 
+    let stats_suc = match stats_suc_date.as_ref() {
+        Some(pixlvec) => {
+            let coords: Vec<(f64,f64)> = pixlvec.iter()
+                                    .map(|(x,y,_)| (*x,*y))
+                                    .collect();
+            Some(coords)
+        },
+        None => None
+    };
+
     let (xmin,xmax) = match stats_suc.as_ref() {
         Some(suc_stats) => {
 
-            let margen = 0.1;
+            let margen = 1.1;
+            let eventos = suc_stats.len();
 
             let min = suc_stats.iter().min_by(|a,b| a.0.partial_cmp(&b.0).unwrap())
                             .ok_or("No hay un mínimo en sucursal")?.0;
             let max = suc_stats.iter().max_by(|a,b| a.0.partial_cmp(&b.0).unwrap())
                             .ok_or("No hay un máximo en sucursal")?.0;
             let rango = max - min;
-            (min - rango * margen,max + rango * margen)
+            let rebanada = rango / eventos as f64;
+            (min - rebanada * margen,max + rebanada * margen)
         },
         None => {
             let min = all_stats.iter().min_by(|a,b| a.0.partial_cmp(&b.0).unwrap())
@@ -706,7 +861,7 @@ pub fn pixl_plot(pixels: &Vec<Pixl>, sucpixl: Option<Vec<Pixl>>) -> Result<Docum
                             .ok_or("No hay un máximo en todas")?;
 
                 let min = (mint.2 - 2.5*mint.3).min(smin);
-                let max = (maxt.2 - 2.5*maxt.3).max(smax);
+                let max = (maxt.2 + 2.5*maxt.3).max(smax);
 
                 (min,max)
             } else {
@@ -736,11 +891,33 @@ pub fn pixl_plot(pixels: &Vec<Pixl>, sucpixl: Option<Vec<Pixl>>) -> Result<Docum
     scx.domain(xmin.max(0.0),xmax);
     scy.domain(ymin,ymax);
 
+    let xext = scx.extent();
+    let yext = scy.extent();
+
+    if xext.0 == xext.1 {
+        return Err(From::from("La escala en x está indeterminada"))
+    };
+
+    if yext.0 == yext.1 {
+        return Err(From::from("La escala en y está indeterminada"))
+    };
+
     let mspace = metric_space(&all_stats, &scx, &scy)?;
     mg = mg.add(mspace);
 
+    match stats_suc_date {
+        Some(stats) => {
+
+            let gl = plot_labels(&stats, &scx, &scy)?;
+            mg = mg.add(gl);
+
+        },
+        None => {}
+    };
+
     match stats_suc {
         Some(stats) => {
+
             let g = plot_line(&stats, &scx, &scy)?;
             mg = mg.add(g);
         },
