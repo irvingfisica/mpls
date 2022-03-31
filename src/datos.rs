@@ -190,6 +190,45 @@ impl Sucursal {
 
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct SucursalIn {
+    #[serde(alias = "Sucursal")]
+    pub id: usize,
+    #[serde(alias = "Nombre")]
+    pub nombre: Option<String>,
+    #[serde(alias = "Calle")]
+    pub direccion: Option<String>,
+    #[serde(alias = "CP")]
+    pub cp: Option<String>,
+    #[serde(alias = "Colonia")]
+    pub colonia: Option<String>,
+    #[serde(alias = "Delegación / Municipio")]
+    pub municipio: Option<String>,
+    #[serde(alias = "Estado")]
+    pub estado: Option<String>,
+    #[serde(alias = "Horario L-V")]
+    pub horario_lv: Option<String>,
+    #[serde(alias = "Horario S")]
+    pub horario_s: Option<String>,
+    #[serde(alias = "Horario D")]
+    pub horario_d: Option<String>,
+    #[serde(alias = "Tipo")]
+    #[serde(deserialize_with = "de_tipo")]
+    pub tipo: Tipo,
+    #[serde(alias = "Ramos")]
+    pub ramos: Option<String>,
+    #[serde(alias = "Estatus")]
+    #[serde(deserialize_with = "de_estatus")]
+    pub estatus: Estatus,
+    #[serde(alias = "X")]
+    pub lon: Option<f64>,
+    #[serde(alias = "Y")]
+    pub lat: Option<f64>,
+    #[serde(alias = "Fecha Apertura")]
+    pub fecha_apertura: Option<NaiveDate>,
+    pub datos: Option<BTreeMap<NaiveDate,Datos>>
+}
+
 
 #[derive(Debug,Serialize,Deserialize,Clone)]
 pub enum Tipo {
